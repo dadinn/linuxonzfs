@@ -45,7 +45,12 @@ overwritten by random noise.
 # apt-get update
 # apt-get install linux-image-amd64 debian-zfs
 
-* check that ZFS filesystem support got loaded properly
+* check that ZF# umount /mnt/boot/grub
+# umount /mnt/dev
+# umount /mnt/proc
+# umount /mnt/sys
+# zfs umount -a
+# zpool export rpoolS filesystem support got loaded properly
 # modprobe zfs
 # dmesg | grep ZFS
 [    5.588948] ZFS: Loaded module v0.6.2-524_gd6385c9, ZFS pool
@@ -63,28 +68,74 @@ version 5000, ZFS filesystem version 5
 # zpool set bootfs=rpool/system/root rpool
 # zpool export rpool
 # zpool import -R /mnt rpool
+
 ** Create swap space
 *** create ZVOL
 # zfs create -V 3G -b 4K rpool/swap
 *** format as swap drive
 # mkswap -f /dev/zvol/rpool/swap
 *** turn on swap device
+
 * Set up Debian on ZFS
 ** install packages in Live environment
 # aptitude install debootstrap
+
 ** bootstrap debian
 # debootstrap wheezy /mnt
+
 ** mount boot filesystem
 # mkdir -p /mnt/boot/grub
 # mount /dev/sda1 /mnt/boot/grub
+
 ** Mount virtual filesystems
 # mount --bind /dev /mnt/dev
 # mount --bind /proc /mnt/proc
 # mount --bind /sys /mnt/sys
+
 ** Chroot into new Debian system
 # chroot /mnt /bin/bash --login
-** Create FSTAB
+
+** Configure the chrooted system
+
+*** Create FSTAB
+Add the following lines to /etc/fstab
+
+/dev/disk/by-id/scsi-SATA_disk1-part1	/boot/grub	auto	defaults	0	1
+
+*** Install and configure locale
+# aptitude install locales
+# locale-gen en_US.UTF-8
+
+*** install lsb-release
+dependency to install ZFS
+# aptitude install lsb-release
+
+*** Install ZFS
+# wget http://archive.zfsonlinux.org/debian/pool/main/z/zfsonlinux/zfsonlinux_4_all.deb
+# dpkg -i zfsonlinux_4_all.deb
+# aptitude update
+# aptitude install linux-image-amd64 debian-zfs
+
+*** Install GRUB
+# aptitude install grub2 zfs-initramfs
+when asked, select /dev/sda drive to install GRUB onto
+
+*** Upgrade the system
+# aptitude dist-upgrade
+
+*** Set root password
+# passwd
+** Reboot
+# umount /mnt/boot/grub
+# umount /mnt/dev
+# umount /mnt/proc
+# umount /mnt/sys
+# zfs umount -a
+# zpool export rpool
+
+# reboot
 
 * WiFi
+
 Need to download firmware from http://intellinuxwireless.org and put
-*iwlwifi-5000-2.ucode* in */lib64/firmware*
+*iwlwifi-5000-ucode* in */lib64/firmware*
