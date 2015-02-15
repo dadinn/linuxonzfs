@@ -1,0 +1,90 @@
+
+* load live disk
+* switch to root user for duration of using Live CD
+# sudo -i
+
+* install Debian packages to Live environment
+# aptitude install gdisk cryptsetup
+
+* create GPT partitions
+# cgdisk /dev/sda
+
+Partition the device the following way:
+ - 500Mb partition for boot with type ef02 (BIOS boot partition)
+ - rest as partition for LUKS+ZFS with default type 8300
+
+* format boot partition to EXT4
+# mke2fs -m 0 -j /dev/sda1
+
+* set up LUKS device
+** create random 4K key file (press random keys if the command blocks)
+# dd if=/dev/random of=/root/keyfile bs=1024 count=4
+
+** make the keyfile readonly to root
+# chmod 0400 /root/keyfile
+
+** Format sda2 partition as LUKS device
+# cryptsetup luksFormat /dev/sda2 /root/keyfile
+
+** Add an extra passphrase to the LUKS device (optional but convenient)
+# cryptsetup luksAddKey /dev/sda2 --key-file /root/keyfile
+
+** Open LUKS device
+# cryptsetup luksOpen /dev/sda2 crypt_zfs --key-file /root/keyfile
+
+** Random-erease the device
+This technique uses the fact that encrypted data created through
+dm-crypt is undistinguisable from random data. We can write the
+entire open LUKS device with zeros and it will look as if it was
+overwritten by random noise.
+# dd if=/dev/zero of=/dev/mapper/crypt_zfs
+
+* install ZFS package to Live environment
+# wget http://archive.zfsonlinux.org/debian/pool/main/z/zfsonlinux/zfsonlinux_4_all.deb
+# dpkg -i zfsonlinux_4_all.deb
+# apt-get update
+# apt-get install linux-image-amd64 debian-zfs
+
+* check that ZFS filesystem support got loaded properly
+# modprobe zfs
+# dmesg | grep ZFS
+[    5.588948] ZFS: Loaded module v0.6.2-524_gd6385c9, ZFS pool
+version 5000, ZFS filesystem version 5
+
+* Setup ZFS filesystem
+** Create zpool
+# zpool create -o ashift=12 -O atime=off -O snapdir=visible rpool /dev/mapper/crypt_zfs
+** Create filesystems
+# zfs create -o compress=on rpool/system
+# for i in usr var opt home; do zfs create -p rpool/system/$i; done
+** Configure the pool
+# zfs umount -a
+# zfs set mountpoint=/ rpool/system/root
+# zpool set bootfs=rpool/system/root rpool
+# zpool export rpool
+# zpool import -R /mnt rpool
+** Create swap space
+*** create ZVOL
+# zfs create -V 3G -b 4K rpool/swap
+*** format as swap drive
+# mkswap -f /dev/zvol/rpool/swap
+*** turn on swap device
+* Set up Debian on ZFS
+** install packages in Live environment
+# aptitude install debootstrap
+** bootstrap debian
+# debootstrap wheezy /mnt
+** mount boot filesystem
+# mkdir -p /mnt/boot/grub
+# mount /dev/sda1 /mnt/boot/grub
+** Mount virtual filesystems
+# mount --bind /dev /mnt/dev
+# mount --bind /proc /mnt/proc
+# mount --bind /sys /mnt/sys
+** Chroot into new Debian system
+# chroot /mnt /bin/bash --login
+** Create FSTAB
+
+* WiFi
+Need to download firmware from http://intellinuxwireless.org and put
+*iwlwifi-5000-2.ucode* in */lib64/firmware*
