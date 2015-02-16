@@ -93,22 +93,32 @@ version 5000, ZFS filesystem version 5
 # mount --bind /sys /mnt/sys
 
 ** Chroot into new Debian system
-# chroot /mnt /bin/bash --login
+# LANG=C chroot /mnt /bin/bash --login
 
 ** Configure the chrooted system
 
 *** Create FSTAB
-Add the following lines to /etc/fstab
+Add the following lines to /etc/fstab:
 
 /dev/disk/by-id/scsi-SATA_disk1-part1	/boot/grub	auto	defaults	0	1
+/dev/mapper/crypt_zfs / zfs defaults 0 0
+/dev/zvol/rpool/swap none swap defaults 0 0
 
-*** Install and configure locale
+*** Create CRYPTTAB
+Add the following lines to /etc/crypttab:
+# CRYPT_ZFS_UUID=$(blkid | grep 'TYPE="crypto_LUKS"' | sed -e 's;.*UUID="\([^"]+\)".*;\1')
+# echo crypt_zfs UUID=$CRYPT_ZFS_UUID none luks,discard >> /etc/crypttab
+# echo target=crypt_zfs,source=UUID=$CRYPT_ZFS_UUID,key=none,rootdev,discard >> /etc/initramfs-tools/conf.d/cryptroot
+
+*** Install and configure locale and keyboard
 # aptitude install locales
 # locale-gen en_US.UTF-8
 
 *** install lsb-release
 dependency to install ZFS
 # aptitude install lsb-release
+
+*** Install 
 
 *** Install ZFS
 # wget http://archive.zfsonlinux.org/debian/pool/main/z/zfsonlinux/zfsonlinux_4_all.deb
@@ -139,3 +149,8 @@ when asked, select /dev/sda drive to install GRUB onto
 
 Need to download firmware from http://intellinuxwireless.org and put
 *iwlwifi-5000-ucode* in */lib64/firmware*
+
+* Resources
+https://help.ubuntu.com/community/encryptedZfs
+https://github.com/zfsonlinux/pkg-zfs/wiki/HOWTO-install-Debian-GNU-Linux-to-a-Native-ZFS-Root-Filesystem
+
