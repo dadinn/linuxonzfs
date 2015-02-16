@@ -145,10 +145,25 @@ when asked, select /dev/sda drive to install GRUB onto
 
 # reboot
 
+* Fast restore
+wget http://archive.zfsonlinux.org/debian/pool/main/z/zfsonlinux/zfsonlinux_4_all.deb
+dpkg -i zfsonlinux_4_all.deb
+aptitude update
+aptitude install cryptfs debian-zfs
+cryptsetup luksOpen /dev/sda2 crypt_zfs --keyfile /path/to/keyfile
+zpool import -R /mnt rpool
+zfs mount -a
+mount /dev/sda1 /mnt/boot/grub
+mount --bind /dev /mnt/dev
+mount --bind /proc /mnt/proc
+mount --bind /sys /mnt/sys
+LANG=C chroot /mnt /bin/bash --login
+
 * WiFi
 
 Need to download firmware from http://intellinuxwireless.org and put
 *iwlwifi-5000-ucode* in */lib64/firmware*
+
 
 * Resources
 https://help.ubuntu.com/community/encryptedZfs
