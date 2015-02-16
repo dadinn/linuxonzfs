@@ -149,7 +149,7 @@ when asked, select /dev/sda drive to install GRUB onto
 wget http://archive.zfsonlinux.org/debian/pool/main/z/zfsonlinux/zfsonlinux_4_all.deb
 dpkg -i zfsonlinux_4_all.deb
 aptitude update
-aptitude install -y cryptfs debian-zfs
+aptitude install -y cryptsetup debian-zfs
 cryptsetup luksOpen /dev/sda2 crypt_zfs --keyfile /path/to/keyfile
 zpool import -R /mnt rpool
 zfs mount -a
