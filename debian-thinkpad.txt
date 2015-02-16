@@ -45,12 +45,7 @@ overwritten by random noise.
 # apt-get update
 # apt-get install linux-image-amd64 debian-zfs
 
-* check that ZF# umount /mnt/boot/grub
-# umount /mnt/dev
-# umount /mnt/proc
-# umount /mnt/sys
-# zfs umount -a
-# zpool export rpoolS filesystem support got loaded properly
+* check that ZFS filesystem support got loaded properly
 # modprobe zfs
 # dmesg | grep ZFS
 [    5.588948] ZFS: Loaded module v0.6.2-524_gd6385c9, ZFS pool
@@ -58,9 +53,9 @@ version 5000, ZFS filesystem version 5
 
 * Setup ZFS filesystem
 ** Create zpool
-# zpool create -o ashift=12 -O atime=off -O snapdir=visible rpool /dev/mapper/crypt_zfs
+# zpool create -o ashift=12 -O mountpoint=none -O atime=off -O snapdir=visible rpool /dev/mapper/crypt_zfs
 ** Create filesystems
-# zfs create -o compress=on rpool/system
+# zfs create -o compress=lz4 rpool/system
 # for i in usr var opt home; do zfs create -p rpool/system/$i; done
 ** Configure the pool
 # zfs umount -a
