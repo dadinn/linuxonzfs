@@ -22,6 +22,7 @@ Partition the device the following way:
 
 ** make the keyfile readonly to root
 # chmod 0400 /root/keyfile
+Don't forget to backup this file
 
 ** Format sda2 partition as LUKS device
 # cryptsetup luksFormat /dev/sda2 /root/keyfile
@@ -38,6 +39,10 @@ dm-crypt is undistinguisable from random data. We can write the
 entire open LUKS device with zeros and it will look as if it was
 overwritten by random noise.
 # dd if=/dev/zero of=/dev/mapper/crypt_zfs
+
+** Backup LUKS headers
+This is optional but highly recommended
+# cryptsetup luksHeaderBackup /dev/sda2
 
 * install ZFS package to Live environment
 # wget http://archive.zfsonlinux.org/debian/pool/main/z/zfsonlinux/zfsonlinux_4_all.deb
