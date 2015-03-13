@@ -30,6 +30,10 @@ Don't forget to backup this file
 ** Add an extra passphrase to the LUKS device (optional but convenient)
 # cryptsetup luksAddKey /dev/sda2 --key-file /root/keyfile
 
+** Backup LUKS headers
+This is optional but highly recommended
+# cryptsetup luksHeaderBackup /dev/sda2 --header-backup-file /mnt/external/luksHeaderBackup
+
 ** Open LUKS device
 # cryptsetup luksOpen /dev/sda2 crypt_zfs --key-file /root/keyfile
 
@@ -40,9 +44,6 @@ entire open LUKS device with zeros and it will look as if it was
 overwritten by random noise.
 # dd if=/dev/zero of=/dev/mapper/crypt_zfs
 
-** Backup LUKS headers
-This is optional but highly recommended
-# cryptsetup luksHeaderBackup /dev/sda2
 
 * install ZFS package to Live environment
 # wget http://archive.zfsonlinux.org/debian/pool/main/z/zfsonlinux/zfsonlinux_4_all.deb
