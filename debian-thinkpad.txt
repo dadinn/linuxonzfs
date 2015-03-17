@@ -100,6 +100,9 @@ swapon /dev/zvol/rpool/swap
 
 ** Configure the chrooted system
 
+*** Configure APT
+- set sources.list
+
 *** Create FSTAB
 Add the following lines to /etc/fstab:
 
@@ -174,4 +177,6 @@ tasksel install laptop
 * Resources
 https://help.ubuntu.com/community/encryptedZfs
 https://github.com/zfsonlinux/pkg-zfs/wiki/HOWTO-install-Debian-GNU-Linux-to-a-Native-ZFS-Root-Filesystem
+http://www.larsko.org/ZfsUbuntu
+
 
