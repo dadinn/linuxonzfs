@@ -10,8 +10,11 @@
 # cgdisk /dev/sda
 
 Partition the device the following way:
- - 500Mb partition for boot with type ef02 (BIOS boot partition)
+ - 500Mb partition for boot with default type 8300
  - rest as partition for LUKS+ZFS with default type 8300
+ - select the remaining free space (<1M) before the boot partition and create new partition there
+ - set the type as ef02  (BIOS boot partition)
+ - sort the partitions using `gdisk /dev/sda` with `s` option
 
 * format boot partition to EXT4
 # mke2fs -m 0 -j /dev/sda1
