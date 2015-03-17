@@ -57,12 +57,20 @@ overwritten by random noise.
 [    5.588948] ZFS: Loaded module v0.6.2-524_gd6385c9, ZFS pool
 version 5000, ZFS filesystem version 5
 
+** Create swap space
+*** create ZVOL
+# zfs create -V 3G -b 4K rpool/swap
+*** format as swap drive
+# mkswap -f /dev/zvol/rpool/swap
+*** turn on swap device
+swapon /dev/zvol/rpool/swap
+
 * Setup ZFS filesystem
 ** Create zpool
 # zpool create -o ashift=12 -O mountpoint=none -O atime=off -O snapdir=visible rpool /dev/mapper/crypt_zfs
 ** Create filesystems
 # zfs create -o compress=lz4 rpool/system
-# for i in usr var opt home; do zfs create -p rpool/system/$i; done
+# for i in var usr opt home; do zfs create -p rpool/system/root/$i; done
 ** Configure the pool
 # zfs umount -a
 # zfs set mountpoint=/ rpool/system/root
@@ -70,12 +78,6 @@ version 5000, ZFS filesystem version 5
 # zpool export rpool
 # zpool import -R /mnt rpool
 
-** Create swap space
-*** create ZVOL
-# zfs create -V 3G -b 4K rpool/swap
-*** format as swap drive
-# mkswap -f /dev/zvol/rpool/swap
-*** turn on swap device
 
 * Set up Debian on ZFS
 ** install packages in Live environment
@@ -107,19 +109,21 @@ Add the following lines to /etc/fstab:
 
 *** Create CRYPTTAB
 Add the following lines to /etc/crypttab:
-# CRYPT_ZFS_UUID=$(blkid | grep 'TYPE="crypto_LUKS"' | sed -e 's;.*UUID="\([^"]+\)".*;\1')
+# CRYPT_ZFS_UUID=$(blkid | grep 'TYPE="crypto_LUKS"' | sed -e 's;.*UUID="\([^"]*\)".*;\1;')
 # echo crypt_zfs UUID=$CRYPT_ZFS_UUID none luks,discard >> /etc/crypttab
 # echo target=crypt_zfs,source=UUID=$CRYPT_ZFS_UUID,key=none,rootdev,discard >> /etc/initramfs-tools/conf.d/cryptroot
 
-*** Install and configure locale and keyboard
+*** Install and configure locale
 # aptitude install locales
 # locale-gen en_US.UTF-8
+# aptitude install console-setup
+
+*** install gdisk and cryptsetup
+# aptitude install gdisk cryptsetup
 
 *** install lsb-release
 dependency to install ZFS
 # aptitude install lsb-release
-
-*** Install 
 
 *** Install ZFS
 # wget http://archive.zfsonlinux.org/debian/pool/main/z/zfsonlinux/zfsonlinux_4_all.deb
@@ -163,8 +167,9 @@ LANG=C chroot /mnt /bin/bash --login
 * WiFi
 
 Need to download firmware from http://intellinuxwireless.org and put
-*iwlwifi-5000-ucode* in */lib64/firmware*
-
+ *iwlwifi-5000-ucode* in */lib64/firmware*
+** install laptop packages
+tasksel install laptop
 
 * Resources
 https://help.ubuntu.com/community/encryptedZfs
