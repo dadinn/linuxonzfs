@@ -212,7 +212,7 @@ aptitude install gdisk cryptsetup
 ```
 
  * install lsb-release  
-_This is a dependency to install ZFS... must be a bug in the dpgk package definition_
+_This is a dependency to install ZFS... must be a bug in the dpkg package definition_
 ```
 aptitude install lsb-release
 ```
