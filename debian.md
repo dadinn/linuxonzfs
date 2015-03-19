@@ -217,7 +217,7 @@ _This is a dependency to install ZFS... must be a bug in the dpgk package defini
 aptitude install lsb-release
 ```
 
- * Install ZFS packages
+ * Install ZFS packages  
 _The same steps as setting it up on live environment_
 ```
 wget http://archive.zfsonlinux.org/debian/pool/main/z/zfsonlinux/zfsonlinux_4_all.deb
@@ -226,7 +226,7 @@ aptitude update
 aptitude install linux-image-amd64 debian-zfs
 ```
 
- * Install GRUB
+ * Install GRUB  
 _When asked, select `/dev/sda` drive to install GRUB onto_
 ```
 aptitude install grub2 zfs-initramfs
