@@ -173,15 +173,13 @@ mount --bind /sys /mnt/debinst/sys
 Configure the new system
 ------------------------
 
-### Configure APT ###
-
+ * Configure APT
 ```
 vi /etc/apt/sources.list
 ```
 
-### Create `/etc/fstab` entries ###
-
-Add the following lines to /etc/fstab:
+ * Create FSTAB entries  
+Add the following lines to `/etc/fstab`:
 
 ```
 /dev/disk/by-id/scsi-SATA_disk1-part1 /boot/grub  auto  defaults  0 1
@@ -189,40 +187,38 @@ Add the following lines to /etc/fstab:
 /dev/zvol/rpool/swap  none  swap  defaults  0 0
 ```
 
-### Create `/etc/crypttab` entries ###
-
-Add the following lines to /etc/crypttab:
-
+ * Create CRYPTTAB entries  
+Run the following commands to create an `/etc/crypttab` file:
 ```
 CRYPT_ZFS_UUID=$(blkid | grep 'TYPE="crypto_LUKS"' | sed -e 's;.*UUID="\([^"]*\)".*;\1;')
 echo crypt_zfs UUID=$CRYPT_ZFS_UUID none luks,discard >> /etc/crypttab
+```
+
+ * Update INITRAMFS config
+```
 echo target=crypt_zfs,source=UUID=$CRYPT_ZFS_UUID,key=none,rootdev,discard >> /etc/initramfs-tools/conf.d/cryptroot
 ```
 
-### Install and configure locales and keyboard layouts ###
+ * Install and configure locales and keyboard layouts
 ```
 aptitude install locales
 locale-gen en_US.UTF-8
 aptitude install console-setup
 ```
 
-### install gdisk and cryptsetup ###
+ * install gdisk and cryptsetup
 ```
 aptitude install gdisk cryptsetup
 ```
 
-### install lsb-release ###
-
-This is a dependency to install ZFS... must be a bug in the dpgk package definition
-
+ * install lsb-release  
+_This is a dependency to install ZFS... must be a bug in the dpgk package definition_
 ```
 aptitude install lsb-release
 ```
 
-### Install ZFS packages ###
-
-The same steps as setting it up on live environment:
-
+ * Install ZFS packages
+_The same steps as setting it up on live environment_
 ```
 wget http://archive.zfsonlinux.org/debian/pool/main/z/zfsonlinux/zfsonlinux_4_all.deb
 dpkg -i zfsonlinux_4_all.deb
@@ -230,27 +226,23 @@ aptitude update
 aptitude install linux-image-amd64 debian-zfs
 ```
 
-### Install GRUB ###
-
+ * Install GRUB
+_When asked, select `/dev/sda` drive to install GRUB onto_
 ```
 aptitude install grub2 zfs-initramfs
 ```
 
-When asked by GRUB, select `/dev/sda` drive to install onto
-
-### Upgrade the system ###
+ * Upgrade the packages on the new system
 ```
 aptitude dist-upgrade
 ```
 
-### Set root password ###
-
+ * Set root password
 ```
 passwd
 ```
 
-### Reboot ###
-
+ * Reboot
 ```
 umount /boot /proc /sys
 exit   # from the chroot environment
