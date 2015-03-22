@@ -248,6 +248,7 @@ umount /boot /proc /sys
 exit   # from the chroot environment
 umount /mnt/debinst/dev
 zfs umount -a
+swapoff /dev/zvol/rpool/swap
 zpool export rpool
 cryptsetup luksClose crypt_zfs
 reboot
