@@ -9,7 +9,7 @@ sudo -i
 
  * install Debian packages to Live environment  
 ```
-aptitude install gdisk cryptsetup debootstrap
+aptitude install -y gdisk cryptsetup debootstrap
 ```
 
 Set up ZFS support in the Live environment
@@ -21,7 +21,7 @@ Set up ZFS support in the Live environment
 wget http://archive.zfsonlinux.org/debian/pool/main/z/zfsonlinux/zfsonlinux_4_all.deb
 dpkg -i zfsonlinux_4_all.deb
 aptitude update
-aptitude install linux-image-amd64 debian-zfs
+aptitude install -y linux-image-amd64 debian-zfs
 ```
 
  * check that ZFS filesystem support got loaded properly
@@ -223,13 +223,13 @@ _The same steps as setting it up on live environment_
 wget http://archive.zfsonlinux.org/debian/pool/main/z/zfsonlinux/zfsonlinux_4_all.deb
 dpkg -i zfsonlinux_4_all.deb
 aptitude update
-aptitude install linux-image-amd64 debian-zfs
+aptitude install -y linux-image-amd64 debian-zfs
 ```
 
  * Install GRUB  
 _When asked, select `/dev/sda` drive to install GRUB onto_
 ```
-aptitude install grub2 zfs-initramfs
+aptitude install -y grub2 zfs-initramfs
 ```
 
  * Upgrade the packages on the new system
@@ -290,5 +290,6 @@ Resources
 * https://help.ubuntu.com/community/encryptedZfs
 * https://github.com/zfsonlinux/pkg-zfs/wiki/HOWTO-install-Debian-GNU-Linux-to-a-Native-ZFS-Root-Filesystem
 * http://www.larsko.org/ZfsUbuntu
+* http://www.firewing1.com/howtos/fedora-20/installing-zfs-and-setting-pool
 
 
