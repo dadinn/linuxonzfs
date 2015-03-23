@@ -63,7 +63,7 @@ cgdisk $SATA_DRIVE
   - press `q` to quit the partitioner
  * alternatively you can do the above with one command using `sgdisk`:
 ```
-sgdisk $SATA_DRIVE -o -n 1:0:+50M -N 2 -N 3 -s -t 1:ef02
+sgdisk $SATA_DRIVE -o -n 1:0:+500M -N 2 -N 3 -s -t 1:ef02
 ```
 
 In the following we will refer to the boot and LUKS+ZFS partitions using the following variables:
