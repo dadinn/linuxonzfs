@@ -41,24 +41,42 @@ __After initializing the live environment you won't need internet connection dur
 Partition drives
 ================
 
+The drive will be referred to from now on as `$SATA_DRIVE`:
+```
+SATA_DRIVE=/dev/sda
+```
+
  * create GPT partitions  
 ```
-cgdisk /dev/sda
+cgdisk $SATA_DRIVE
 ```
 
-Partition the device the following way:
+ * Partition the device the following way:
+  - create a 500M partition for boot with default type `8300`
+  - create a partition on the rest of the disk for LUKS+ZFS with default type `8300`
+  - go back to the remaining free space before the boot partition (<1M) and create new partition there with type `ef02` (BIOS boot partition)
+  - press `w` to write out the changes
+  - press `q` to quit the partitioner
+ * sort the partitions using `gdisk $SATA_DRIVE` (due to the creating the BIOS boot partition the last it got numbered as the last, despite being the first on the drive by position)
+  - press `s` to sort the partitions
+  - press `w` to write out the changes
+  - press `q` to quit the partitioner
+ * alternatively you can do the above with one command using `sgdisk`:
+```
+sgdisk $SATA_DRIVE -o -n 1:0:+50M -N 2 -N 3 -s -t 1:ef02
+```
 
- * 500Mb partition for boot with default type `8300`
- * rest as partition for LUKS+ZFS with default type `8300`
- * select the remaining free space (<1M) before the boot partition and create new partition there
- * set the type as `ef02` (BIOS boot partition)
- * sort the partitions using `gdisk /dev/sda` with `s` option
+In the following we will refer to the boot and LUKS+ZFS partitions using the following variables:
+```
+BOOT_PART=BLABLA   # TO BE DONE
+LUKS_PART=BLABLA   # TO BE DONE
+```
 
 Format boot partition to EXT4
 -----------------------------
 
 ```
-mke2fs -m 0 -j /dev/sda1
+mke2fs -m 0 -j $BOOT_PART
 ```
 
 Set up encrypted device using LUKS
@@ -76,21 +94,21 @@ chmod 0400 /root/keyfile
 ```
  * Format sda2 partition as LUKS device  
 ```
-cryptsetup luksFormat /dev/sda2 /root/keyfile
+cryptsetup luksFormat $LUKS_PART /root/keyfile
 ```
  * Add an extra passphrase to the LUKS device  
  _This is optional but convenient_
 ```
-cryptsetup luksAddKey /dev/sda2 --key-file /root/keyfile
+cryptsetup luksAddKey $LUKS_PART --key-file /root/keyfile
 ```
  * Backup LUKS headers  
  _This is optional but highly recommended_
 ```
-cryptsetup luksHeaderBackup /dev/sda2 --header-backup-file /mnt/external/luksHeaderBackup
+cryptsetup luksHeaderBackup $LUKS_PART --header-backup-file /mnt/external/luksHeaderBackup
 ```
  * Open LUKS device  
 ```
-cryptsetup luksOpen /dev/sda2 crypt_zfs --key-file /root/keyfile
+cryptsetup luksOpen $LUKS_PART crypt_zfs --key-file /root/keyfile
 ```
 
  * Random-erease the device  
