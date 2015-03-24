@@ -66,10 +66,11 @@ cgdisk $SATA_DRIVE
 sgdisk $SATA_DRIVE -o -n 1:0:+500M -N 2 -N 3 -s -t 1:ef02
 ```
 
-In the following we will refer to the boot and LUKS+ZFS partitions using the following variables:
+With the following we can refer to the boot and LUKS+ZFS partitions using variables:
 ```
-BOOT_PART=BLABLA   # TO BE DONE
-LUKS_PART=BLABLA   # TO BE DONE
+function partuuid { sgdisk -i $2 $1|grep "Partition unique GUID:"|sed -e "s;^.*: \(.*\)$;\L\1;" ;  }
+BOOT_PART=/dev/disk/by-partuuid/$(partuuid $SATA_DRIVE 2)
+LUKS_PART=/dev/disk/by-partuuid/$(partuuid $SATA_DRIVE 3)
 ```
 
 Format boot partition to EXT4
@@ -88,11 +89,11 @@ Set up encrypted device using LUKS
 dd if=/dev/random of=/root/keyfile bs=1024 count=4
 ```
  * make the keyfile readonly to root  
- _Don't forget to back it up!_
+ _Don't forget to back this file up!_
 ```
 chmod 0400 /root/keyfile
 ```
- * Format sda2 partition as LUKS device  
+ * Format root partition as LUKS device  
 ```
 cryptsetup luksFormat $LUKS_PART /root/keyfile
 ```
