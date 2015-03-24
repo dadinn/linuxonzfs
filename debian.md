@@ -41,20 +41,20 @@ __After initializing the live environment you won't need internet connection dur
 Partition drives
 ================
 
-The drive will be referred to from now on as `$SATA_DRIVE`:
+The drive will be referred to from now on as `${SATA_DRIVE}`:
 ```
 SATA_DRIVE=/dev/sda
 ```
 
 Create GPT partitions the following way:
 
- * using `cgdisk $SATA_DRIVE`:
+ * using `cgdisk ${SATA_DRIVE}`:
   - create a 500M partition for boot with default type `8300`
   - create a partition on the rest of the disk for LUKS+ZFS with default type `8300`
   - go back to the remaining free space before the boot partition (<1M) and create new partition there with type `ef02` (BIOS boot partition)
   - press `w` to write out the changes
   - press `q` to quit the partitioner
- * sort the partitions using `gdisk $SATA_DRIVE`:  
+ * sort the partitions using `gdisk ${SATA_DRIVE}`:  
  (due to the creating the BIOS boot partition the last it got numbered as the last, despite being the first on the drive by position)
   - press `s` to sort the partitions
   - press `w` to write out the changes
@@ -62,14 +62,14 @@ Create GPT partitions the following way:
 
 Alternatively you can do all the above with one command using `sgdisk`:
 ```
-sgdisk $SATA_DRIVE -o -n 1:0:+500M -N 2 -N 3 -s -t 1:ef02
+sgdisk ${SATA_DRIVE} -o -n 1:0:+500M -N 2 -N 3 -s -t 1:ef02
 ```
 
 With the following we can refer to the boot and LUKS+ZFS partitions using variables:
 ```
 function partuuid { sgdisk -i $2 $1|grep "Partition unique GUID:"|sed -e "s;^.*: \(.*\)$;\L\1;" ;  }
-BOOT_PART=/dev/disk/by-partuuid/$(partuuid $SATA_DRIVE 2)
-LUKS_PART=/dev/disk/by-partuuid/$(partuuid $SATA_DRIVE 3)
+SATA_BOOT_PART=/dev/disk/by-partuuid/$(partuuid ${SATA_DRIVE} 2)
+SATA_LUKS_PART=/dev/disk/by-partuuid/$(partuuid ${SATA_DRIVE} 3)
 ```
 
 Format boot partition to EXT4
@@ -77,13 +77,7 @@ Format boot partition to EXT4
 
 Format the partition to be journaling but with little metadata block:
 ```
-mke2fs -m 0 -j $BOOT_PART
-```
-
-Get the UUID of the boot filesystem for later usage:
-```
-function fsuuid { blkid -s UUID -o value $1; }
-BOOT_UUID=$(fsuuid $BOOT_PART)
+mke2fs -m 0 -j ${SATA_BOOT_PART}
 ```
 
 Set up encrypted device using LUKS
@@ -101,21 +95,22 @@ chmod 0400 /root/keyfile
 ```
  * Format root partition as LUKS device  
 ```
-cryptsetup luksFormat $LUKS_PART /root/keyfile
+cryptsetup luksFormat ${SATA_LUKS_PART} /root/keyfile
 ```
  * Add an extra passphrase to the LUKS device  
  _This is optional but convenient_
 ```
-cryptsetup luksAddKey $LUKS_PART --key-file /root/keyfile
+cryptsetup luksAddKey ${SATA_LUKS_PART} --key-file /root/keyfile
 ```
  * Backup LUKS headers  
  _This is optional but highly recommended_
 ```
-cryptsetup luksHeaderBackup $LUKS_PART --header-backup-file /mnt/external/luksHeaderBackup
+cryptsetup luksHeaderBackup ${SATA_LUKS_PART} --header-backup-file /root/luksHeaderBackup
 ```
  * Open LUKS device  
 ```
-cryptsetup luksOpen $LUKS_PART crypt_zfs --key-file /root/keyfile
+LUKS_NAME=crypt_zfs
+cryptsetup luksOpen ${SATA_LUKS_PART} ${LUKS_NAME} --key-file /root/keyfile
 ```
 
  * Random-erease the device  
@@ -124,12 +119,7 @@ dm-crypt is undistinguisable from random data. We can write the
 entire open LUKS device with zeros and it will look as if it was
 overwritten by random noise._
 ```
-dd if=/dev/zero of=/dev/mapper/crypt_zfs
-```
-
-Get the UUID of the LUKS crypto device for later usage:
-```
-LUKS_UUID=$(fsuuid $LUKS_PART)
+dd if=/dev/zero of=/dev/mapper/${LUKS_NAME}
 ```
 
 Set up ZFS pool, zvols, and filesystems
@@ -142,42 +132,39 @@ RPOOL=rpool
 
  * Create ZFS pool
 ```
-zpool create -o ashift=12 -O atime=off -O mountpoint=none -O snapdir=visible $RPOOL /dev/mapper/crypt_zfs
+zpool create -o ashift=12 -O atime=off -O mountpoint=none -O snapdir=visible ${RPOOL} /dev/mapper/crypt_zfs
 ```
  * Create ZFS filesystems
 ```
-zfs create -o compress=lz4 $RPOOL/system
-for i in var opt home; do zfs create -p $RPOOL/system/root/$i; done
+zfs create -o compress=lz4 ${RPOOL}/system
+for i in var opt home; do zfs create -p ${RPOOL}/system/root/${i}; done
 ```
  * Configure and remount the pool
 ```
 zfs umount -a
-zfs set mountpoint=/ $RPOOL/system/root
-zpool set bootfs=$RPOOL/system/root $RPOOL
-zpool export $RPOOL
+zfs set mountpoint=/ ${RPOOL}/system/root
+zpool set bootfs=${RPOOL}/system/root ${RPOOL}
+zpool export ${RPOOL}
 mkdir /mnt/debinst
-zpool import -R /mnt/debinst $RPOOL
+zpool import -R /mnt/debinst ${RPOOL}
 ```
 
 ### Create swap space as ZVOL ###
 
  * create ZVOL
 ```
-zfs create -V 3G -b 4K $RPOOL/swap
-SWAP_DEV=/dev/zvol/$RPOOL/swap
+zfs create -V 3G -b 4K ${RPOOL}/swap
+
+# define swap device path
+SWAP_DEV=/dev/zvol/${RPOOL}/swap
 ```
  * format as swap drive
 ```
-mkswap -f $SWAP_DEV
+mkswap -f ${SWAP_DEV}
 ```
  * turn on swap device
 ```
-swapon $SWAP_DEV
-```
-
-Get the UUID of the swap device for later usage:
-```
-SWAP_UUID=$(fsuuid $SWAP_DEV)
+swapon ${SWAP_DEV}
 ```
 
 Bootstrap minimal Debian system
@@ -188,6 +175,14 @@ __You will need to have internet connection for the following steps until told a
  * bootstrap debian
 ```
 debootstrap wheezy /mnt/debinst
+```
+
+ * Grab UUIDs for creating tab entries
+```
+function fsuuid { blkid -s UUID -o value $1; }
+BOOT_UUID=$(fsuuid ${SATA_BOOT_PART} )
+LUKS_UUID=$(fsuuid ${SATA_LUKS_PART})
+SWAP_UUID=$(fsuuid ${SWAP_DEV})
 ```
 
  * Create FSTAB entries  
