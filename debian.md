@@ -119,7 +119,8 @@ dm-crypt is undistinguisable from random data. We can write the
 entire open LUKS device with zeros and it will look as if it was
 overwritten by random noise._
 ```
-dd if=/dev/zero of=/dev/mapper/${LUKS_NAME}
+LUKS_DEVICE=/dev/mapper/${LUKS_NAME}
+dd if=/dev/zero of=${LUKS_DEVICE}
 ```
 
 Set up ZFS pool, zvols, and filesystems
@@ -132,21 +133,26 @@ RPOOL=rpool
 
  * Create ZFS pool
 ```
-zpool create -o ashift=12 -O atime=off -O mountpoint=none -O snapdir=visible ${RPOOL} /dev/mapper/crypt_zfs
+zpool create -o ashift=12 -O atime=off -O mountpoint=none -O snapdir=visible ${RPOOL} ${LUKS_DEVICE}
 ```
  * Create ZFS filesystems
 ```
 zfs create -o compress=lz4 ${RPOOL}/system
 for i in var opt home; do zfs create -p ${RPOOL}/system/root/${i}; done
 ```
- * Configure and remount the pool
+ * Configure and export the pool
 ```
 zfs umount -a
 zfs set mountpoint=/ ${RPOOL}/system/root
 zpool set bootfs=${RPOOL}/system/root ${RPOOL}
 zpool export ${RPOOL}
-mkdir /mnt/debinst
-zpool import -R /mnt/debinst ${RPOOL}
+```
+ * import and remount the pool
+```
+INSTALL_ROOT=/mnt/debinst
+mkdir ${INSTALL_ROOT}
+zpool import -R ${INSTALL_ROOT} ${RPOOL}
+zfs mount -a
 ```
 
 ### Create swap space as ZVOL ###
@@ -154,17 +160,15 @@ zpool import -R /mnt/debinst ${RPOOL}
  * create ZVOL
 ```
 zfs create -V 3G -b 4K ${RPOOL}/swap
-
-# define swap device path
-SWAP_DEV=/dev/zvol/${RPOOL}/swap
 ```
  * format as swap drive
 ```
-mkswap -f ${SWAP_DEV}
+SWAP_DEVICE=/dev/zvol/${RPOOL}/swap
+mkswap -f ${SWAP_DEVICE}
 ```
  * turn on swap device
 ```
-swapon ${SWAP_DEV}
+swapon ${SWAP_DEVICE}
 ```
 
 Bootstrap minimal Debian system
@@ -174,7 +178,7 @@ __You will need to have internet connection for the following steps until told a
 
  * bootstrap debian
 ```
-debootstrap wheezy /mnt/debinst
+debootstrap wheezy ${INSTALL_ROOT}
 ```
 
  * Grab UUIDs for creating tab entries
@@ -182,39 +186,35 @@ debootstrap wheezy /mnt/debinst
 function fsuuid { blkid -s UUID -o value $1; }
 BOOT_UUID=$(fsuuid ${SATA_BOOT_PART} )
 LUKS_UUID=$(fsuuid ${SATA_LUKS_PART})
-SWAP_UUID=$(fsuuid ${SWAP_DEV})
+SWAP_UUID=$(fsuuid ${SWAP_DEVICE})
 ```
 
  * Create FSTAB entries  
-Add the following lines to `/etc/fstab`:
+Add the following lines to `fstab`:
 ```
-echo "# <file system> <dir> <type> <options> <dump> <pass>" > /mnt/debinst/etc/fstab
-echo "$RPOOL/system/root / zfs defaults  0 0" >> /mnt/debinst/etc/fstab
-echo "$RPOOL/system/root/var /var  zfs defaults  0 0" >> /mnt/debinst/etc/fstab
-echo "$RPOOL/system/home /home zfs defaults  0 0" >> /mnt/debinst/etc/fstab
-echo "UUID=$SWAP_UUID none  swap  defaults  0 0" >> /mnt/debinst/etc/fstab
-echo "UUID=$BOOT_UUID /boot auto  defaults  0 1" >> /mnt/debinst/etc/fstab
+echo "# <file system> <dir> <type> <options> <dump> <pass>" > ${INSTALL_ROOT}/etc/fstab
+echo "$RPOOL/system/root / zfs defaults  0 0" >> ${INSTALL_ROOT}/etc/fstab
+echo "$RPOOL/system/root/var /var  zfs defaults  0 0" >> ${INSTALL_ROOT}/etc/fstab
+echo "$RPOOL/system/home /home zfs defaults  0 0" >> ${INSTALL_ROOT}/etc/fstab
+echo "UUID=$SWAP_UUID none  swap  defaults  0 0" >> ${INSTALL_ROOT}/etc/fstab
+echo "UUID=$BOOT_UUID /boot auto  defaults  0 1" >> ${INSTALL_ROOT}/etc/fstab
 ```
 
- * Mount `dev` filesystem
+ * Mount `dev` and `boot` filesystems
 ```
-mount --bind /dev /mnt/debinst/dev
+mount --bind /dev ${INSTALL_ROOT}/dev
+mount ${SATA_BOOT_PART} ${INSTALL_ROOT}/boot
 ```
 
  * Chroot into new Debian system
 ```
-LANG=C chroot /mnt/debinst /bin/bash --login
-```
-
- * mount boot filesystem
-```
-mount /dev/sda1 /mnt/debinst/boot
+LANG=C chroot ${INSTALL_ROOT} /bin/bash --login
 ```
 
  * Mount `sys` and `proc` filesystems
 ```
-mount --bind /proc /mnt/debinst/proc
-mount --bind /sys /mnt/debinst/sys
+mount none -t proc /proc
+mount none -t sys /sys
 ```
 
 Configure the new system
