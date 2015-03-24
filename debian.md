@@ -46,22 +46,21 @@ The drive will be referred to from now on as `$SATA_DRIVE`:
 SATA_DRIVE=/dev/sda
 ```
 
- * create GPT partitions  
-```
-cgdisk $SATA_DRIVE
-```
+Create GPT partitions the following way:
 
- * Partition the device the following way:
+ * using `cgdisk $SATA_DRIVE`:
   - create a 500M partition for boot with default type `8300`
   - create a partition on the rest of the disk for LUKS+ZFS with default type `8300`
   - go back to the remaining free space before the boot partition (<1M) and create new partition there with type `ef02` (BIOS boot partition)
   - press `w` to write out the changes
   - press `q` to quit the partitioner
- * sort the partitions using `gdisk $SATA_DRIVE` (due to the creating the BIOS boot partition the last it got numbered as the last, despite being the first on the drive by position)
+ * sort the partitions using `gdisk $SATA_DRIVE`:  
+ (due to the creating the BIOS boot partition the last it got numbered as the last, despite being the first on the drive by position)
   - press `s` to sort the partitions
   - press `w` to write out the changes
   - press `q` to quit the partitioner
- * alternatively you can do the above with one command using `sgdisk`:
+
+Alternatively you can do all the above with one command using `sgdisk`:
 ```
 sgdisk $SATA_DRIVE -o -n 1:0:+500M -N 2 -N 3 -s -t 1:ef02
 ```
