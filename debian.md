@@ -75,8 +75,15 @@ LUKS_PART=/dev/disk/by-partuuid/$(partuuid $SATA_DRIVE 3)
 Format boot partition to EXT4
 -----------------------------
 
+Format the partition to be journaling but with little metadata block:
 ```
 mke2fs -m 0 -j $BOOT_PART
+```
+
+Get the UUID of the boot filesystem for later usage:
+```
+function fsuuid { blkid -s UUID -o value $1; }
+BOOT_UUID=$(fsuuid $BOOT_PART)
 ```
 
 Set up encrypted device using LUKS
