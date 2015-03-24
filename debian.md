@@ -135,43 +135,49 @@ LUKS_UUID=$(fsuuid $LUKS_PART)
 Set up ZFS pool, zvols, and filesystems
 ---------------------------------------
 
+In the rest of the guide the root ZFS pool will be refered to using the following definition:
+```
+RPOOL=rpool
+```
+
  * Create ZFS pool
 ```
-zpool create -o ashift=12 -O mountpoint=none -O atime=off -O snapdir=visible rpool /dev/mapper/crypt_zfs
+zpool create -o ashift=12 -O atime=off -O mountpoint=none -O snapdir=visible $RPOOL /dev/mapper/crypt_zfs
 ```
  * Create ZFS filesystems
 ```
-zfs create -o compress=lz4 rpool/system
-for i in var usr opt home; do zfs create -p rpool/system/root/$i; done
+zfs create -o compress=lz4 $RPOOL/system
+for i in var opt home; do zfs create -p $RPOOL/system/root/$i; done
 ```
  * Configure and remount the pool
 ```
 zfs umount -a
-zfs set mountpoint=/ rpool/system/root
-zpool set bootfs=rpool/system/root rpool
-zpool export rpool
+zfs set mountpoint=/ $RPOOL/system/root
+zpool set bootfs=$RPOOL/system/root $RPOOL
+zpool export $RPOOL
 mkdir /mnt/debinst
-zpool import -R /mnt/debinst rpool
+zpool import -R /mnt/debinst $RPOOL
 ```
 
 ### Create swap space as ZVOL ###
 
  * create ZVOL
 ```
-zfs create -V 3G -b 4K rpool/swap
+zfs create -V 3G -b 4K $RPOOL/swap
+SWAP_DEV=/dev/zvol/$RPOOL/swap
 ```
  * format as swap drive
 ```
-mkswap -f /dev/zvol/rpool/swap
+mkswap -f $SWAP_DEV
 ```
  * turn on swap device
 ```
-swapon /dev/zvol/rpool/swap
+swapon $SWAP_DEV
 ```
 
 Get the UUID of the swap device for later usage:
 ```
-SWAP_UUID=$(fsuuid /dev/zvol/rpool/swap)
+SWAP_UUID=$(fsuuid $SWAP_DEV)
 ```
 
 Bootstrap minimal Debian system
@@ -188,9 +194,9 @@ debootstrap wheezy /mnt/debinst
 Add the following lines to `/etc/fstab`:
 ```
 echo "# <file system> <dir> <type> <options> <dump> <pass>" > /mnt/debinst/etc/fstab
-echo "rpool/system/root / zfs defaults  0 0" >> /mnt/debinst/etc/fstab
-echo "rpool/system/root/var /var  zfs defaults  0 0" >> /mnt/debinst/etc/fstab
-echo "rpool/system/home /home zfs defaults  0 0" >> /mnt/debinst/etc/fstab
+echo "$RPOOL/system/root / zfs defaults  0 0" >> /mnt/debinst/etc/fstab
+echo "$RPOOL/system/root/var /var  zfs defaults  0 0" >> /mnt/debinst/etc/fstab
+echo "$RPOOL/system/home /home zfs defaults  0 0" >> /mnt/debinst/etc/fstab
 echo "UUID=$SWAP_UUID none  swap  defaults  0 0" >> /mnt/debinst/etc/fstab
 echo "UUID=$BOOT_UUID /boot auto  defaults  0 1" >> /mnt/debinst/etc/fstab
 ```
@@ -285,7 +291,7 @@ umount /boot /proc /sys
 exit   # from the chroot environment
 umount /mnt/debinst/dev
 zfs umount -a
-swapoff /dev/zvol/rpool/swap
+swapoff $SWAP_DEV
 zpool export rpool
 cryptsetup luksClose crypt_zfs
 reboot
