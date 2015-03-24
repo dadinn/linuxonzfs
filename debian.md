@@ -127,6 +127,11 @@ overwritten by random noise._
 dd if=/dev/zero of=/dev/mapper/crypt_zfs
 ```
 
+Get the UUID of the LUKS crypto device for later usage:
+```
+LUKS_UUID=$(fsuuid $LUKS_PART)
+```
+
 Set up ZFS pool, zvols, and filesystems
 ---------------------------------------
 
@@ -162,6 +167,11 @@ mkswap -f /dev/zvol/rpool/swap
  * turn on swap device
 ```
 swapon /dev/zvol/rpool/swap
+```
+
+Get the UUID of the swap device for later usage:
+```
+SWAP_UUID=$(fsuuid /dev/zvol/rpool/swap)
 ```
 
 Bootstrap minimal Debian system
