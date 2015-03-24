@@ -184,6 +184,17 @@ __You will need to have internet connection for the following steps until told a
 debootstrap wheezy /mnt/debinst
 ```
 
+ * Create FSTAB entries  
+Add the following lines to `/etc/fstab`:
+```
+echo "# <file system> <dir> <type> <options> <dump> <pass>" > /mnt/debinst/etc/fstab
+echo "rpool/system/root / zfs defaults  0 0" >> /mnt/debinst/etc/fstab
+echo "rpool/system/root/var /var  zfs defaults  0 0" >> /mnt/debinst/etc/fstab
+echo "rpool/system/home /home zfs defaults  0 0" >> /mnt/debinst/etc/fstab
+echo "UUID=$SWAP_UUID none  swap  defaults  0 0" >> /mnt/debinst/etc/fstab
+echo "UUID=$BOOT_UUID /boot auto  defaults  0 1" >> /mnt/debinst/etc/fstab
+```
+
  * Mount `dev` filesystem
 ```
 mount --bind /dev /mnt/debinst/dev
@@ -191,7 +202,7 @@ mount --bind /dev /mnt/debinst/dev
 
  * Chroot into new Debian system
 ```
-LANG=C chroot /mnt /bin/bash --login
+LANG=C chroot /mnt/debinst /bin/bash --login
 ```
 
  * mount boot filesystem
@@ -211,15 +222,6 @@ Configure the new system
  * Configure APT
 ```
 vi /etc/apt/sources.list
-```
-
- * Create FSTAB entries  
-Add the following lines to `/etc/fstab`:
-
-```
-/dev/disk/by-id/scsi-SATA_disk1-part1 /boot/grub  auto  defaults  0 1
-/dev/mapper/crypt_zfs / zfs defaults  0  0
-/dev/zvol/rpool/swap  none  swap  defaults  0 0
 ```
 
  * Create CRYPTTAB entries  
