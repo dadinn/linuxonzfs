@@ -144,7 +144,7 @@ zfs create -o compress=lz4 -o mountpoint=legacy ${RPOOL}/system
 # This is the definition of ZFS file systems and their mount points
 # Entries are spearated by semicolon(;), while mount points are
 # separated by colon(:) from the file system paths
-ZFSTAB="root:/;root/var:/var;opt:/opt;home:/home"
+ZFSTAB="root:/;root/var:/var;home:/home;opt:/opt"
 
 # DUE TO A BUG WITH THE INITRAMFS MODULE MOUNT POINTS CANNOT BE SPECIFIED HERE
 # SEE https://github.com/zfsonlinux/zfs/issues/2498
