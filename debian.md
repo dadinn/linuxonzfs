@@ -327,11 +327,17 @@ aptitude dist-upgrade
 ```
 
  * Install `sudo`
- * disable root
- * install root user
- * Set root password
 ```
-passwd
+aptitude install sudo
+```
+ * install root user
+```
+useradd -m -G sudo pista
+passwd pista
+```
+ * disable root
+```
+passwd -l root
 ```
 
  * Reboot
