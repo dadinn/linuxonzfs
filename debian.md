@@ -239,7 +239,7 @@ mount none -t proc /proc
 mount none -t sysfs /sys
 ```
 
- * Automount using fstab entries
+ * Automount using FSTAB entries
 ```
 mount -a
 ```
@@ -263,17 +263,36 @@ deb     http://security.debian.org/ wheezy/updates main contrib non-free
 deb-src http://security.debian.org/ wheezy/updates main contrib non-free
 EOF
 ```
+
+ * Tell APT not to install "recommended" packages
+```
+cat > /etc/apt/apt.conf.d/10norecommends <<EOF
+APT::Install-Recommends "false";
+APT::Install-Suggests "false";
+EOF
+```
  
- * Update APT package list
+ * Update APT package list and install upgrades
 ```
 aptitude update
+aptitude full-upgrade
 ```
 
- * Install and configure locales and keyboard layouts
+ * Install and configure locales
 ```
 aptitude install locales
 locale-gen en_US.UTF-8
+```
+ 
+ * Install keyboard layouts for console
+```
 aptitude install console-setup
+```
+
+ * Install usefull command line tools
+```
+aptitude install less bash-completion
+source /etc/bash_completion
 ```
 
  * install gdisk and cryptsetup
@@ -293,13 +312,13 @@ _The same steps as setting it up on live environment_
 wget http://archive.zfsonlinux.org/debian/pool/main/z/zfsonlinux/zfsonlinux_4_all.deb
 dpkg -i zfsonlinux_4_all.deb
 aptitude update
-aptitude install -y linux-image-amd64 debian-zfs
+aptitude install make gcc linux-image-amd64 debian-zfs
 ```
 
  * Install GRUB  
 _When asked, select `/dev/sda` drive to install GRUB onto_
 ```
-aptitude install -y grub2 zfs-initramfs
+aptitude install -y zfs-initramfs grub2
 ```
 
  * Upgrade the packages on the new system
@@ -307,6 +326,9 @@ aptitude install -y grub2 zfs-initramfs
 aptitude dist-upgrade
 ```
 
+ * Install `sudo`
+ * disable root
+ * install root user
  * Set root password
 ```
 passwd
