@@ -205,7 +205,7 @@ cat > ${INSTALL_ROOT}/etc/fstab <<EOF
 # <file system> <mount point> <type>  <options> <dump>  <pass>
 $(for i in ${ZFSTAB//;/ }; do echo -e "${RPOOL}/system/${i/:*}\t${i/*:}\tzfs\tdefaults\t0\t0"; done)
 UUID=${SWAP_UUID} none  swap  defaults  0 0
-UUID=${BOOT_UUID} /boot auto  defaults  0 1
+UUID=${BOOT_UUID} /boot ext4  defaults  0 1
 EOF
 ```
 
@@ -218,10 +218,14 @@ ${LUKS_NAME}  UUID=${LUKS_UUID} none  luks,discard
 EOF
 ```
 
- * Mount `dev` and `boot` filesystems
+ * Update INITRAMFS config (is this needed??)
+```
+echo target=crypt_zfs,source=UUID=$CRYPT_ZFS_UUID,key=none,rootdev,discard >> /etc/initramfs-tools/conf.d/cryptroot
+```
+
+ * Mount `dev` filesystems
 ```
 mount --bind /dev ${INSTALL_ROOT}/dev
-mount ${SATA_BOOT_PART} ${INSTALL_ROOT}/boot
 ```
 
  * Chroot into new Debian system
@@ -232,7 +236,12 @@ LANG=C chroot ${INSTALL_ROOT} /bin/bash --login
  * Mount `sys` and `proc` filesystems
 ```
 mount none -t proc /proc
-mount none -t sys /sys
+mount none -t sysfs /sys
+```
+
+ * Automount using fstab entries
+```
+mount -a
 ```
 
 Configure the new system
@@ -240,12 +249,24 @@ Configure the new system
 
  * Configure APT
 ```
-vi /etc/apt/sources.list
-```
+cat > /etc/apt/sources.list <<EOF
+# See https://www.debian.org/mirror/list
+deb     http://ftp.uk.debian.org/debian wheezy main contrib non-free
+deb-src http://ftp.uk.debian.org/debian wheezy main contrib non-free
 
- * Update INITRAMFS config
+# See https://wiki.debian.org/StableUpdates
+deb     http://http.debian.net/debian wheezy-updates main contrib non-free
+deb-src http://http.debian.net/debian wheezy-updates main contrib non-free
+
+# See https://www.debian.org/security/
+deb     http://security.debian.org/ wheezy/updates main contrib non-free
+deb-src http://security.debian.org/ wheezy/updates main contrib non-free
+EOF
 ```
-echo target=crypt_zfs,source=UUID=$CRYPT_ZFS_UUID,key=none,rootdev,discard >> /etc/initramfs-tools/conf.d/cryptroot
+ 
+ * Update APT package list
+```
+aptitude update
 ```
 
  * Install and configure locales and keyboard layouts
