@@ -137,13 +137,22 @@ zpool create -o ashift=12 -O atime=off -O mountpoint=none -O snapdir=visible ${R
 ```
  * Create ZFS filesystems
 ```
-zfs create -o compress=lz4 ${RPOOL}/system
-for i in var opt home; do zfs create -p ${RPOOL}/system/root/${i}; done
+# DUE TO A BUG WITH THE INITRAMFS MODULE THE LEGACY MODE HAS TO BE USED
+# SEE https://github.com/zfsonlinux/zfs/issues/2498
+zfs create -o compress=lz4 -o mountpoint=legacy ${RPOOL}/system
+
+# This is the definition of ZFS file systems and their mount points
+# Entries are spearated by semicolon(;), while mount points are
+# separated by colon(:) from the file system paths
+ZFSTAB="root:/;root/var:/var;opt:/opt;home:/home"
+
+# DUE TO A BUG WITH THE INITRAMFS MODULE MOUNT POINTS CANNOT BE SPECIFIED HERE
+# SEE https://github.com/zfsonlinux/zfs/issues/2498
+for i in ${ZFSTAB//;/ }; do zfs create -p ${RPOOL}/system/${i/:*}; done
 ```
- * Configure and export the pool
+ * Specify root filesystem and export the pool
 ```
 zfs umount -a
-zfs set mountpoint=/ ${RPOOL}/system/root
 zpool set bootfs=${RPOOL}/system/root ${RPOOL}
 zpool export ${RPOOL}
 ```
@@ -152,7 +161,7 @@ zpool export ${RPOOL}
 INSTALL_ROOT=/mnt/debinst
 mkdir ${INSTALL_ROOT}
 zpool import -R ${INSTALL_ROOT} ${RPOOL}
-zfs mount -a
+mount -t zfs ${RPOOL}/system/root $INSTALL_ROOT
 ```
 
 ### Create swap space as ZVOL ###
@@ -192,12 +201,21 @@ SWAP_UUID=$(fsuuid ${SWAP_DEVICE})
  * Create FSTAB entries  
 Add the following lines to `fstab`:
 ```
-echo "# <file system> <dir> <type> <options> <dump> <pass>" > ${INSTALL_ROOT}/etc/fstab
-echo "$RPOOL/system/root / zfs defaults  0 0" >> ${INSTALL_ROOT}/etc/fstab
-echo "$RPOOL/system/root/var /var  zfs defaults  0 0" >> ${INSTALL_ROOT}/etc/fstab
-echo "$RPOOL/system/home /home zfs defaults  0 0" >> ${INSTALL_ROOT}/etc/fstab
-echo "UUID=$SWAP_UUID none  swap  defaults  0 0" >> ${INSTALL_ROOT}/etc/fstab
-echo "UUID=$BOOT_UUID /boot auto  defaults  0 1" >> ${INSTALL_ROOT}/etc/fstab
+cat > ${INSTALL_ROOT}/etc/fstab <<EOF
+# <file system> <mount point> <type>  <options> <dump>  <pass>
+$(for i in ${ZFSTAB//;/ }; do echo -e "${RPOOL}/system/${i/:*}\t${i/*:}\tzfs\tdefaults\t0\t0"; done)
+UUID=${SWAP_UUID} none  swap  defaults  0 0
+UUID=${BOOT_UUID} /boot auto  defaults  0 1
+EOF
+```
+
+ * Create CRYPTTAB entries  
+Run the following commands to create an `crypttab` file:
+```
+cat > ${INSTALL_ROOT}/etc/crypttab <<EOF
+# <name>  <device>  <key> <options>
+${LUKS_NAME}  UUID=${LUKS_UUID} none  luks,discard
+EOF
 ```
 
  * Mount `dev` and `boot` filesystems
@@ -223,13 +241,6 @@ Configure the new system
  * Configure APT
 ```
 vi /etc/apt/sources.list
-```
-
- * Create CRYPTTAB entries  
-Run the following commands to create an `/etc/crypttab` file:
-```
-CRYPT_ZFS_UUID=$(blkid | grep 'TYPE="crypto_LUKS"' | sed -e 's;.*UUID="\([^"]*\)".*;\1;')
-echo crypt_zfs UUID=$CRYPT_ZFS_UUID none luks,discard >> /etc/crypttab
 ```
 
  * Update INITRAMFS config
