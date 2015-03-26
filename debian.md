@@ -137,7 +137,8 @@ mkdir ${INSTALL_ROOT}
 ```
  * Create ZFS pool
 ```
-zpool create -o ashift=12 -O atime=off -O mountpoint=none -O snapdir=visible -R ${INSTALL_ROOT} ${RPOOL} ${LUKS_DEVICE}
+zpool create -o ashift=12 -O atime=off -O mountpoint=none -O snapdir=visible \
+  -R ${INSTALL_ROOT} ${RPOOL} ${LUKS_DEVICE}
 ```
  * Create ZFS pool and root filesystem
 ```
