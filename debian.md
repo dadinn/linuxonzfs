@@ -130,38 +130,35 @@ In the rest of the guide the root ZFS pool will be refered to using the followin
 ```
 RPOOL=rpool
 ```
-
+ * Create install root directory
+```
+INSTALL_ROOT=/mnt/debinst
+mkdir ${INSTALL_ROOT}
+```
  * Create ZFS pool
 ```
-zpool create -o ashift=12 -O atime=off -O mountpoint=none -O snapdir=visible ${RPOOL} ${LUKS_DEVICE}
+zpool create -o ashift=12 -O atime=off -O mountpoint=none -O snapdir=visible -R ${INSTALL_ROOT} ${RPOOL} ${LUKS_DEVICE}
 ```
- * Create ZFS filesystems
+ * Create ZFS pool and root filesystem
 ```
 # DUE TO A BUG WITH THE INITRAMFS MODULE THE LEGACY MODE HAS TO BE USED
 # SEE https://github.com/zfsonlinux/zfs/issues/2498
 zfs create -o compress=lz4 -o mountpoint=legacy ${RPOOL}/system
 
+zfs create ${RPOOL}/system/root
+zpool set bootfs=${RPOOL}/system/root ${RPOOL}
+mount -t zfs rpool/system/root ${INSTALL_ROOT}
+```
+ * Create additional file systems
+```
 # This is the definition of ZFS file systems and their mount points
 # Entries are spearated by semicolon(;), while mount points are
 # separated by colon(:) from the file system paths
-ZFSTAB="root:/;root/var:/var;home:/home;opt:/opt"
+ZFSTAB="root/var:/var;home:/home;opt:/opt"
 
 # DUE TO A BUG WITH THE INITRAMFS MODULE MOUNT POINTS CANNOT BE SPECIFIED HERE
 # SEE https://github.com/zfsonlinux/zfs/issues/2498
 for i in ${ZFSTAB//;/ }; do zfs create -p ${RPOOL}/system/${i/:*}; done
-```
- * Specify root filesystem and export the pool
-```
-zfs umount -a
-zpool set bootfs=${RPOOL}/system/root ${RPOOL}
-zpool export ${RPOOL}
-```
- * import and remount the pool
-```
-INSTALL_ROOT=/mnt/debinst
-mkdir ${INSTALL_ROOT}
-zpool import -R ${INSTALL_ROOT} ${RPOOL}
-mount -t zfs ${RPOOL}/system/root $INSTALL_ROOT
 ```
 
 ### Create swap space as ZVOL ###
