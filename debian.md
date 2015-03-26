@@ -148,7 +148,6 @@ zfs create -o compress=lz4 -o mountpoint=legacy ${RPOOL}/system
 
 zfs create ${RPOOL}/system/root
 zpool set bootfs=${RPOOL}/system/root ${RPOOL}
-mount -t zfs rpool/system/root ${INSTALL_ROOT}
 ```
  * Create additional file systems
 ```
@@ -160,6 +159,12 @@ ZFSTAB="root/var:/var;home:/home;opt:/opt"
 # DUE TO A BUG WITH THE INITRAMFS MODULE MOUNT POINTS CANNOT BE SPECIFIED HERE
 # SEE https://github.com/zfsonlinux/zfs/issues/2498
 for i in ${ZFSTAB//;/ }; do zfs create -p ${RPOOL}/system/${i/:*}; done
+```
+ * export and reimport the pool
+```
+zpool export ${RPOOL}
+zpool import -R ${INSTALL_ROOT} ${RPOOL}
+mount -t zfs rpool/system/root ${INSTALL_ROOT}
 ```
 
 ### Create swap space as ZVOL ###
