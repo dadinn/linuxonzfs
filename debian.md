@@ -132,13 +132,13 @@ RPOOL=rpool
 ```
  * Create install root directory
 ```
-INSTALL_ROOT=/mnt/debinst
-mkdir ${INSTALL_ROOT}
+INSTOOT=/mnt/inst
+mkdir ${INSTROOT}
 ```
  * Create ZFS pool
 ```
 zpool create -o ashift=12 -O atime=off -O mountpoint=none -O snapdir=visible \
-  -R ${INSTALL_ROOT} ${RPOOL} ${LUKS_DEVICE}
+  -R ${INSTROOT} ${RPOOL} ${LUKS_DEVICE}
 ```
  * Create ZFS pool and root filesystem
 ```
@@ -163,8 +163,8 @@ for i in ${ZFSTAB//;/ }; do zfs create -p ${RPOOL}/system/${i/:*}; done
  * export and reimport the pool
 ```
 zpool export ${RPOOL}
-zpool import -R ${INSTALL_ROOT} ${RPOOL}
-mount -t zfs rpool/system/root ${INSTALL_ROOT}
+zpool import -R ${INSTROOT} ${RPOOL}
+mount -t zfs rpool/system/root ${INSTROOT}
 ```
 
 ### Create swap space as ZVOL ###
@@ -186,7 +186,7 @@ __You will need to have internet connection for the following steps until told a
 
  * bootstrap debian
 ```
-debootstrap wheezy ${INSTALL_ROOT}
+debootstrap wheezy ${INSTROOT}
 ```
 
  * Grab UUIDs for creating tab entries
@@ -200,7 +200,7 @@ SWAP_UUID=$(fsuuid ${SWAP_DEVICE})
  * Create FSTAB entries  
 Add the following lines to `fstab`:
 ```
-cat > ${INSTALL_ROOT}/etc/fstab <<EOF
+cat > ${INSTROOT}/etc/fstab <<EOF
 # <file system> <mount point> <type>  <options> <dump>  <pass>
 ${LUKS_DEVICE}  / zfs defaults  0 0
 $(for i in ${ZFSTAB//;/ }; do echo -e "${RPOOL}/system/${i/:*}\t${i/*:}\tzfs\tdefaults\t0\t0"; done)
@@ -212,27 +212,22 @@ EOF
  * Create CRYPTTAB entries  
 Run the following commands to create an `crypttab` file:
 ```
-cat > ${INSTALL_ROOT}/etc/crypttab <<EOF
+cat > ${INSTROOT}/etc/crypttab <<EOF
 # <name>  <device>  <key> <options>
 ${LUKS_NAME}  UUID=${LUKS_UUID} none  luks,discard
 EOF
 ```
 
- * Update INITRAMFS config (is this needed??)
-```
-echo target=crypt_zfs,source=UUID=$CRYPT_ZFS_UUID,key=none,rootdev,discard >> /etc/initramfs-tools/conf.d/cryptroot
-```
-
  * Mount `dev` filesystems
 ```
-mount --bind /dev ${INSTALL_ROOT}/dev
-mount --bind /sys ${INSTALL_ROOT}/sys
-mount --bind /proc ${INSTALL_ROOT}/proc
+mount --bind /dev ${INSTROOT}/dev
+mount --bind /sys ${INSTROOT}/sys
+mount --bind /proc ${INSTROOT}/proc
 ```
 
  * Chroot into new Debian system
 ```
-LANG=C chroot ${INSTALL_ROOT} /bin/bash --login
+LANG=C chroot ${INSTROOT} /bin/bash --login
 ```
 
  * Automount using FSTAB entries
