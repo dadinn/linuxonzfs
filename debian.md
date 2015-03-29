@@ -178,10 +178,6 @@ zfs create -V 3G -b 4K ${RPOOL}/swap
 SWAP_DEVICE=/dev/zvol/${RPOOL}/swap
 mkswap -f ${SWAP_DEVICE}
 ```
- * turn on swap device
-```
-swapon ${SWAP_DEVICE}
-```
 
 Bootstrap minimal Debian system
 ===============================
@@ -206,6 +202,7 @@ Add the following lines to `fstab`:
 ```
 cat > ${INSTALL_ROOT}/etc/fstab <<EOF
 # <file system> <mount point> <type>  <options> <dump>  <pass>
+${LUKS_DEVICE}  / zfs defaults  0 0
 $(for i in ${ZFSTAB//;/ }; do echo -e "${RPOOL}/system/${i/:*}\t${i/*:}\tzfs\tdefaults\t0\t0"; done)
 UUID=${SWAP_UUID} none  swap  defaults  0 0
 UUID=${BOOT_UUID} /boot ext4  defaults  0 1
@@ -229,17 +226,13 @@ echo target=crypt_zfs,source=UUID=$CRYPT_ZFS_UUID,key=none,rootdev,discard >> /e
  * Mount `dev` filesystems
 ```
 mount --bind /dev ${INSTALL_ROOT}/dev
+mount --bind /sys ${INSTALL_ROOT}/sys
+mount --bind /proc ${INSTALL_ROOT}/proc
 ```
 
  * Chroot into new Debian system
 ```
 LANG=C chroot ${INSTALL_ROOT} /bin/bash --login
-```
-
- * Mount `sys` and `proc` filesystems
-```
-mount none -t proc /proc
-mount none -t sysfs /sys
 ```
 
  * Automount using FSTAB entries
@@ -249,6 +242,14 @@ mount -a
 
 Configure the new system
 ------------------------
+
+ * Create hostname file
+```
+HOSTNAME=debian-laptop
+cat > /etc/hostname <<EOF
+${HOSTNAME}
+EOF
+```
 
  * Configure APT
 ```
