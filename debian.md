@@ -47,7 +47,8 @@ The following variables are to give arguments to the rest of the process
 # path to the main system drive
 SATA_DRIVE=/dev/sda
 
-# path directory to persistently store files created/accessed during installation from inside Live CD environment
+# path directory to persistently store files created/accessed during installation
+# from inside Live CD environment
 EXTERNAL_STORAGE=/mnt/usb
 
 # Label/name for the LUKS device created by dm-crypt
