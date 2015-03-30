@@ -63,7 +63,7 @@ INSTOOT=/mnt/inst
 # This is the definition of ZFS file systems and their mount points
 # Entries are spearated by semicolon(;), while mount points are
 # separated by colon(:) from the file system paths
-ZFSTAB="root/var:/var;home:/home;opt:/opt"
+ZFSTAB="var:/var;home:/home;opt:/opt"
 
 # hostname for the newly installed machine
 HOSTNAME=debian-laptop
