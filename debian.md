@@ -38,13 +38,41 @@ version 5000, ZFS filesystem version 5
 
 __After initializing the live environment you won't need internet connection during the next few steps until told again__
 
+Set install parameters
+======================
+
+The following variables are to give arguments to the rest of the process
+
+```
+# path to the main system drive
+SATA_DRIVE=/dev/sda
+
+# path directory to persistently store files created/accessed during installation from inside Live CD environment
+EXTERNAL_STORAGE=/mnt/usb
+
+# Label/name for the LUKS device created by dm-crypt
+LUKS_LABEL=crypt_zfs
+
+# name for the ZFS pool for the whole system
+RPOOL=rpool
+
+# directory to mount ZFS root filesystem during installation
+INSTOOT=/mnt/inst
+
+# This is the definition of ZFS file systems and their mount points
+# Entries are spearated by semicolon(;), while mount points are
+# separated by colon(:) from the file system paths
+ZFSTAB="root/var:/var;home:/home;opt:/opt"
+
+# hostname for the newly installed machine
+HOSTNAME=debian-laptop
+```
+
+
+
 Partition drives
 ================
 
-The drive will be referred to from now on as `${SATA_DRIVE}`:
-```
-SATA_DRIVE=/dev/sda
-```
 
 Create GPT partitions the following way:
 
@@ -83,34 +111,31 @@ mke2fs -m 0 -j ${SATA_BOOT_PART}
 Set up encrypted device using LUKS
 ------------------
 
- * create random 4K key file  
+ * create random 4K LUKS keyfile (if not exists)  
  _Press random keys if the command blocks_
 ```
-dd if=/dev/random of=/root/keyfile bs=1024 count=4
-```
- * make the keyfile readonly to root  
- _Don't forget to back this file up!_
-```
-chmod 0400 /root/keyfile
+LUKS_KEYFILE=${EXTERNAL_STORAGE}/keyfile
+dd if=/dev/random of=${LUKS_KEYFILE} bs=1024 count=4
+# make only readable to root
+chmod 0400 ${LUKS_KEYFILE}
 ```
  * Format root partition as LUKS device  
 ```
-cryptsetup luksFormat ${SATA_LUKS_PART} /root/keyfile
+cryptsetup luksFormat ${SATA_LUKS_PART} ${LUKS_KEYFILE}
 ```
  * Add an extra passphrase to the LUKS device  
  _This is optional but convenient_
 ```
-cryptsetup luksAddKey ${SATA_LUKS_PART} --key-file /root/keyfile
+cryptsetup luksAddKey ${SATA_LUKS_PART} --key-file ${LUKS_KEYFILE}
 ```
  * Backup LUKS headers  
  _This is optional but highly recommended_
 ```
-cryptsetup luksHeaderBackup ${SATA_LUKS_PART} --header-backup-file /root/luksHeaderBackup
+cryptsetup luksHeaderBackup ${SATA_LUKS_PART} --header-backup-file ${EXTERNAL_STORAGE}/luksHeaderBackup
 ```
- * Open LUKS device  
+ * Open LUKS device
 ```
-LUKS_NAME=crypt_zfs
-cryptsetup luksOpen ${SATA_LUKS_PART} ${LUKS_NAME} --key-file /root/keyfile
+cryptsetup luksOpen ${SATA_LUKS_PART} ${LUKS_LABEL} --key-file ${LUKS_KEYFILE}
 ```
 
  * Random-erease the device  
@@ -119,20 +144,15 @@ dm-crypt is undistinguisable from random data. We can write the
 entire open LUKS device with zeros and it will look as if it was
 overwritten by random noise._
 ```
-LUKS_DEVICE=/dev/mapper/${LUKS_NAME}
+LUKS_DEVICE=/dev/mapper/${LUKS_LABEL}
 dd if=/dev/zero of=${LUKS_DEVICE}
 ```
 
 Set up ZFS pool, zvols, and filesystems
 ---------------------------------------
 
-In the rest of the guide the root ZFS pool will be refered to using the following definition:
-```
-RPOOL=rpool
-```
  * Create install root directory
 ```
-INSTOOT=/mnt/inst
 mkdir ${INSTROOT}
 ```
  * Create ZFS pool
@@ -151,11 +171,6 @@ zpool set bootfs=${RPOOL}/system/root ${RPOOL}
 ```
  * Create additional file systems
 ```
-# This is the definition of ZFS file systems and their mount points
-# Entries are spearated by semicolon(;), while mount points are
-# separated by colon(:) from the file system paths
-ZFSTAB="root/var:/var;home:/home;opt:/opt"
-
 # DUE TO A BUG WITH THE INITRAMFS MODULE MOUNT POINTS CANNOT BE SPECIFIED HERE
 # SEE https://github.com/zfsonlinux/zfs/issues/2498
 for i in ${ZFSTAB//;/ }; do zfs create -p ${RPOOL}/system/${i/:*}; done
@@ -202,10 +217,9 @@ Add the following lines to `fstab`:
 ```
 cat > ${INSTROOT}/etc/fstab <<EOF
 # <file system> <mount point> <type>  <options> <dump>  <pass>
-${LUKS_DEVICE}  / zfs defaults  0 0
 $(for i in ${ZFSTAB//;/ }; do echo -e "${RPOOL}/system/${i/:*}\t${i/*:}\tzfs\tdefaults\t0\t0"; done)
 UUID=${SWAP_UUID} none  swap  defaults  0 0
-UUID=${BOOT_UUID} /boot ext4  defaults  0 1
+UUID=${BOOT_UUID} /boot/grub ext4  defaults  0 1
 EOF
 ```
 
@@ -214,7 +228,7 @@ Run the following commands to create an `crypttab` file:
 ```
 cat > ${INSTROOT}/etc/crypttab <<EOF
 # <name>  <device>  <key> <options>
-${LUKS_NAME}  UUID=${LUKS_UUID} none  luks,discard
+${LUKS_LABEL}  UUID=${LUKS_UUID} none  luks,discard
 EOF
 ```
 
@@ -232,6 +246,7 @@ LANG=C chroot ${INSTROOT} /bin/bash --login
 
  * Automount using FSTAB entries
 ```
+mkdir /boot/grub
 mount -a
 ```
 
@@ -240,7 +255,6 @@ Configure the new system
 
  * Create hostname file
 ```
-HOSTNAME=debian-laptop
 cat > /etc/hostname <<EOF
 ${HOSTNAME}
 EOF
@@ -341,9 +355,9 @@ passwd -l root
 
  * Reboot
 ```
-umount /boot /proc /sys
+umount /boot 
 exit   # from the chroot environment
-umount /mnt/debinst/dev
+umount ${INSTROOT}/{dev,sys,proc}
 zfs umount -a
 swapoff $SWAP_DEV
 zpool export rpool
