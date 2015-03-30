@@ -158,29 +158,27 @@ mkdir ${INSTROOT}
 ```
  * Create ZFS pool
 ```
-zpool create -o ashift=12 -O atime=off -O mountpoint=none -O snapdir=visible \
-  -R ${INSTROOT} ${RPOOL} ${LUKS_DEVICE}
+zpool create -O atime=off -O mountpoint=none -O snapdir=visible \
+  -o ashift=12 -R ${INSTROOT} ${RPOOL} ${LUKS_DEVICE}
 ```
  * Create ZFS pool and root filesystem
 ```
-# DUE TO A BUG WITH THE INITRAMFS MODULE THE LEGACY MODE HAS TO BE USED
-# SEE https://github.com/zfsonlinux/zfs/issues/2498
-zfs create -o compress=lz4 -o mountpoint=legacy ${RPOOL}/system
-
-zfs create ${RPOOL}/system/root
+zfs create -o compress=lz4 -o copies=2 ${RPOOL}/system
+zfs create -o mountpoint=/ ${RPOOL}/system/root
 zpool set bootfs=${RPOOL}/system/root ${RPOOL}
 ```
  * Create additional file systems
 ```
 # DUE TO A BUG WITH THE INITRAMFS MODULE MOUNT POINTS CANNOT BE SPECIFIED HERE
 # SEE https://github.com/zfsonlinux/zfs/issues/2498
-for i in ${ZFSTAB//;/ }; do zfs create -p ${RPOOL}/system/${i/:*}; done
+zfs create -o mountpoint=legacy ${RPOOL}/system/mounts
+for i in ${ZFSTAB//;/ }; do zfs create -p ${RPOOL}/system/mounts/${i/:*}; done
 ```
  * export and reimport the pool
 ```
 zpool export ${RPOOL}
 zpool import -R ${INSTROOT} ${RPOOL}
-mount -t zfs rpool/system/root ${INSTROOT}
+zfs mount -a
 ```
 
 ### Create swap space as ZVOL ###
@@ -218,7 +216,7 @@ Add the following lines to `fstab`:
 ```
 cat > ${INSTROOT}/etc/fstab <<EOF
 # <file system> <mount point> <type>  <options> <dump>  <pass>
-$(for i in ${ZFSTAB//;/ }; do echo -e "${RPOOL}/system/${i/:*}\t${i/*:}\tzfs\tdefaults\t0\t0"; done)
+$(for i in ${ZFSTAB//;/ }; do echo -e "${RPOOL}/system/mounts/${i/:*}\t${i/*:}\tzfs\tdefaults\t0\t0"; done)
 UUID=${SWAP_UUID} none  swap  defaults  0 0
 UUID=${BOOT_UUID} /boot/grub ext4  defaults  0 1
 EOF
