@@ -231,6 +231,11 @@ ${LUKS_LABEL}  UUID=${LUKS_UUID} none  luks,discard
 EOF
 ```
 
+ * Create hostname file
+```
+echo ${HOSTNAME} > /etc/hostname
+```
+
  * Mount `dev` filesystems
 ```
 mount --bind /dev ${INSTROOT}/dev
@@ -251,13 +256,6 @@ mount -a
 
 Configure the new system
 ------------------------
-
- * Create hostname file
-```
-cat > /etc/hostname <<EOF
-${HOSTNAME}
-EOF
-```
 
  * Configure APT
 ```
