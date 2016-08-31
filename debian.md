@@ -58,7 +58,7 @@ LUKS_LABEL=crypt_zfs
 RPOOL=rpool
 
 # directory to mount ZFS root filesystem during installation
-INSTOOT=/mnt/inst
+INSTROOT=/mnt/inst
 
 # This is the definition of ZFS file systems and their mount points
 # Entries are spearated by semicolon(;), while mount points are
